@@ -291,6 +291,9 @@ are Phase 5 deliverables.
 - `backend/app/services/repair_service.py` — `RepairService` (template ID → rendered repair script)
 - `backend/app/api/v1/repair.py` — `POST /api/v1/repair` + `GET /api/v1/repair/templates`
 - `backend/app/templates/jinja/repair/` — 5 repair Jinja2 templates (CUDA upgrade, Python install, driver update, venv recreate, pip reinstall)
+- `backend/app/schemas/ai.py` — API-layer Pydantic schemas for AI endpoints
+- `frontend/src/types/index.ts` — AI TypeScript interfaces (TroubleshootRequest, SuggestedFix, RepairResponse, etc.)
+- `frontend/src/services/api.ts` — `troubleshoot()`, `generateRepair()`, `getRepairTemplates()` API methods
 
 ### AI Provider Interface
 

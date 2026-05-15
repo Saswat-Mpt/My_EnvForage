@@ -30,6 +30,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - `POST /api/v1/repair` endpoint — generates repair scripts from template ID + params.
   - `GET /api/v1/repair/templates` endpoint — lists available repair templates.
   - All repair scripts include user confirmation prompts before making changes.
+- **Phase 4 — Part 5**: Frontend API Types.
+  - `backend/app/schemas/ai.py` — API-layer Pydantic schemas for troubleshoot and repair endpoints.
+  - `frontend/src/types/index.ts` — Added `TroubleshootRequest`, `TroubleshootResponse`, `SuggestedFix`, `RepairRequest`, `RepairResponse`, `RepairTemplateInfo` TypeScript interfaces.
+  - `frontend/src/services/api.ts` — Added `troubleshoot()`, `generateRepair()`, `getRepairTemplates()` API methods with structured error handling.
 
 ## [0.3.0] - 2026-05-14
 

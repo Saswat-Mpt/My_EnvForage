@@ -1,4 +1,15 @@
-import { Profile, ScriptGenerationRequest, ScriptGenerationResponse, DiagnosticReport, DiagnosticResponse } from '../types';
+import {
+  Profile,
+  ScriptGenerationRequest,
+  ScriptGenerationResponse,
+  DiagnosticReport,
+  DiagnosticResponse,
+  TroubleshootRequest,
+  TroubleshootResponse,
+  RepairRequest,
+  RepairResponse,
+  RepairTemplateListResponse,
+} from '../types';
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api/v1';
 
@@ -46,6 +57,42 @@ export const api = {
       body: JSON.stringify(report),
     });
     if (!response.ok) throw new Error('Failed to analyze diagnostic report');
+    return response.json();
+  },
+
+  troubleshoot: async (request: TroubleshootRequest): Promise<TroubleshootResponse> => {
+    const response = await fetch(`${API_BASE_URL}/troubleshoot`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(request),
+    });
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      throw new Error(errorData.detail?.message || 'AI troubleshooting failed');
+    }
+    return response.json();
+  },
+
+  generateRepair: async (request: RepairRequest): Promise<RepairResponse> => {
+    const response = await fetch(`${API_BASE_URL}/repair`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(request),
+    });
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      throw new Error(errorData.detail?.message || 'Repair script generation failed');
+    }
+    return response.json();
+  },
+
+  getRepairTemplates: async (): Promise<RepairTemplateListResponse> => {
+    const response = await fetch(`${API_BASE_URL}/repair/templates`, { cache: 'no-store' });
+    if (!response.ok) throw new Error('Failed to fetch repair templates');
     return response.json();
   }
 };

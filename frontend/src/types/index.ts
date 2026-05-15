@@ -118,3 +118,57 @@ export interface DiagnosticResponse {
   issues: CompatibilityIssue[];
   recommendations: string[];
 }
+
+// ── AI Troubleshoot Types ────────────────────────────────────────────────────
+
+export interface TroubleshootRequest {
+  diagnostic: Record<string, unknown>;
+  profile_slug?: string;
+  profile_name?: string;
+  target_os?: string;
+  python_version?: string;
+  cuda_version?: string;
+  user_description?: string;
+}
+
+export interface SuggestedFix {
+  step: number;
+  title: string;
+  description: string;
+  severity: 'CRITICAL' | 'WARNING' | 'INFO';
+  safe_commands: string[];
+  repair_template_id: string | null;
+}
+
+export interface TroubleshootResponse {
+  session_id: string;
+  root_cause: string;
+  suggested_fixes: SuggestedFix[];
+  repair_script_available: boolean;
+  confidence: number;
+  disclaimer: string;
+}
+
+// ── AI Repair Types ──────────────────────────────────────────────────────────
+
+export interface RepairRequest {
+  template_id: string;
+  params?: Record<string, unknown>;
+}
+
+export interface RepairResponse {
+  template_id: string;
+  filename: string;
+  content: string;
+  size_bytes: number;
+  disclaimer: string;
+}
+
+export interface RepairTemplateInfo {
+  id: string;
+  description: string;
+}
+
+export interface RepairTemplateListResponse {
+  templates: RepairTemplateInfo[];
+}
