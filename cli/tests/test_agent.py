@@ -6,11 +6,15 @@ All detector tests mock subprocess / platform — no nvidia-smi required.
 """
 from __future__ import annotations
 
+import sys
+from unittest.mock import MagicMock, patch
+if sys.platform != "win32":
+    sys.modules["winreg"] = MagicMock()
+
 import json
 from pathlib import Path
 from unittest import runner
 from pydoc import cli
-from unittest.mock import MagicMock, patch
 
 import pytest
 
