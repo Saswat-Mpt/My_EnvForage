@@ -131,8 +131,23 @@ def test_conda_template_name_field_matches_profile():
     result = renderer.render("environment.yml", context)
     assert "name: pytorch-cuda" in result.content
 
+def _extract_channels(rendered: str) -> list[str]:
+    """Extract ordered channel list from rendered environment.yml content."""
+    lines = rendered.splitlines()
+    try:
+        i = lines.index("channels:") + 1
+    except ValueError:
+        return []
+    out: list[str] = []
+    for line in lines[i:]:
+        if not line.startswith("  - "):
+            break
+        out.append(line.replace("  - ", "", 1).strip())
+    return out
+
+
 def test_conda_template_cuda_adds_pytorch_nvidia_channels():
-    """When cuda_version is set, channels must include pytorch and nvidia."""
+    """When cuda_version is set, channels must include pytorch and nvidia in correct order."""
     context = make_context(
         profile_name="cuda-env",
         python_version="3.11",
@@ -140,10 +155,7 @@ def test_conda_template_cuda_adds_pytorch_nvidia_channels():
     )
     renderer = TemplateRenderer()
     result = renderer.render("environment.yml", context)
-    assert "- pytorch" in result.content
-    assert "- nvidia" in result.content
-    assert "- conda-forge" in result.content
-    assert "- defaults" in result.content
+    assert _extract_channels(result.content) == ["pytorch", "nvidia", "conda-forge", "defaults"]
 
 
 def test_conda_template_rocm_adds_pytorch_channel():
@@ -161,9 +173,7 @@ def test_conda_template_rocm_adds_pytorch_channel():
     )
     renderer = TemplateRenderer()
     result = renderer.render("environment.yml", context)
-    assert "- pytorch" in result.content
-    assert "- nvidia" not in result.content
-    assert "- conda-forge" in result.content
+    assert _extract_channels(result.content) == ["pytorch", "conda-forge", "defaults"]
 
 
 def test_conda_template_cpu_only_no_gpu_channels():
@@ -175,9 +185,4 @@ def test_conda_template_cpu_only_no_gpu_channels():
     )
     renderer = TemplateRenderer()
     result = renderer.render("environment.yml", context)
-    assert "- pytorch" not in result.content
-    assert "- nvidia" not in result.content
-    assert "- conda-forge" in result.content
-    assert "- defaults" in result.content
-
-    
+    assert _extract_channels(result.content) == ["conda-forge", "defaults"]
