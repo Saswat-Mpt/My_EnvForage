@@ -97,7 +97,7 @@ def diagnose(output: str | None, send: bool, api_url: str, quiet: bool, sarif: b
         import json as _json
         click.echo(_json.dumps(report.to_sarif(), indent=2))
         return
-    
+
     report_json = report.to_json(indent=2)
 
     # ── Output to file ──────────────────────────────────────────────────────
@@ -128,14 +128,14 @@ def _print_report_summary(report: DiagnosticReport) -> None:
     if report.cpu.cores < 4:
         cpu_str += "  [yellow]⚠ WARNING: Under 4 cores — data loading may bottleneck training[/]"
     table.add_row("CPU", cpu_str)
-    
+
     ram_str = f"{report.ram.total_gb} GB total, {report.ram.available_gb} GB free"
     if report.ram.total_gb < 8:
         ram_str += "  [bold red][!] CRITICAL: Under 8 GB — heavy ML profiles will fail[/]"
     elif report.ram.total_gb < 16:
         ram_str += "  [yellow][!] WARNING: Under 16 GB — some ML profiles may be slow[/]"
     table.add_row("RAM", ram_str)
-    
+
     if report.gpus:
         for gpu in report.gpus:
             vram = f"{gpu.vram_gb} GB" if gpu.vram_gb else "?"
@@ -304,9 +304,9 @@ def verify(profile: str | None, output: str | None, quiet: bool) -> None:
             }
             click.echo(json.dumps(res, indent=2))
             sys.exit(1)
-        
+
         data = json.loads(proc.stdout.strip())
-        
+
         # 3. Analyze checks
         if not data["import_ok"]:
             if not quiet:
@@ -318,12 +318,12 @@ def verify(profile: str | None, output: str | None, quiet: bool) -> None:
             }
             click.echo(json.dumps(res, indent=2))
             sys.exit(1)
-        
+
         # Check if CUDA profile is detected
         is_gpu_profile = False
         if profile:
             is_gpu_profile = any(term in profile.lower() for term in ["cuda", "gpu", "diffusion", "finetune"])
-        
+
         if is_gpu_profile and not data["cuda_ok"]:
             if not quiet:
                 _print_verification_summary(data, is_gpu_profile=is_gpu_profile)
@@ -334,7 +334,7 @@ def verify(profile: str | None, output: str | None, quiet: bool) -> None:
             }
             click.echo(json.dumps(res, indent=2))
             sys.exit(1)
-        
+
         # All required checks passed!
         msg = "Environment works: PyTorch imported successfully"
         if data["cuda_ok"]:
@@ -344,7 +344,7 @@ def verify(profile: str | None, output: str | None, quiet: bool) -> None:
 
         if not quiet:
             _print_verification_summary(data, is_gpu_profile=is_gpu_profile)
-            
+
         res = {
             "status": "PASS",
             "message": msg
@@ -397,7 +397,7 @@ def _print_verification_summary(data: dict, is_gpu_profile: bool) -> None:
     table.add_row("Installed CUDA Version", "[dim]INFO[/]", f"{cuda_v}")
 
     table.add_row("Required CUDA Profile", "[dim]INFO[/]", ">= 11.8 (Recommended for CUDA paths)")
-    
+
     console.print("\n[bold]=== Verification Report ===[/]")
     console.print(table)
 
@@ -459,10 +459,10 @@ def fix(report: str, profile: str, api_url: str, dry_run: bool) -> None:
         result = response.json()
 
         console.print(f"[green][+][/] Scripts generated (job: {result.get('job_id', '?')})")
-        
+
         if result.get("resolved_packages"):
             console.print(f"  [cyan]Resolved Packages:[/] {', '.join(result['resolved_packages'])}")
-            
+
         if dry_run:
             console.print("\n[bold]Files to be generated:[/]")
             for script in result.get("scripts", []):
@@ -486,4 +486,96 @@ def fix(report: str, profile: str, api_url: str, dry_run: bool) -> None:
         err_console.print(f"API error {e.response.status_code}: {e.response.text}")
         sys.exit(1)
 
+# ── envforge list ──────────────────────────────────────────────────────────────
 
+@cli.command("list")
+@click.option(
+    "--api-url",
+    default="http://localhost:8000",
+    show_default=True,
+    envvar="ENVFORGE_API_URL",
+    help="Base URL of the EnvForge API.",
+)
+@click.option(
+    "--quiet", "-q", is_flag=True, default=False,
+    help="Suppress all output except the JSON profile list.",
+)
+@click.option(
+    "--filter", "-f", "filter_tag",
+    default=None,
+    help="Filter profiles by tag (e.g. cuda, cpu, diffusion).",
+)
+def list_profiles(api_url: str, quiet: bool, filter_tag: str | None) -> None:
+    """
+    List all available environment profiles from the EnvForge API.
+
+    Fetches from GET /api/v1/profiles and displays a formatted summary table.
+    Use --filter to narrow results by tag.
+    """
+    url = f"{api_url.rstrip('/')}/api/v1/profiles"
+
+    if not quiet:
+        console.print(Panel(
+            f"[bold cyan]EnvForge Profile Registry[/] v{__version__}\n"
+            "[dim]Fetching available environment profiles...[/]",
+            expand=False,
+        ))
+
+    try:
+        response = httpx.get(url, timeout=15)
+        response.raise_for_status()
+        data = response.json()
+        profiles: list[dict] = data.get("profiles", data) if isinstance(data, dict) else data
+
+    except httpx.ConnectError:
+        err_console.print(f"[ERROR] Cannot connect to {url}")
+        err_console.print("  Hint: Is the EnvForge API running? Check ENVFORGE_API_URL.")
+        sys.exit(1)
+    except httpx.HTTPStatusError as e:
+        err_console.print(f"[ERROR] API returned {e.response.status_code}")
+        err_console.print(e.response.text)
+        sys.exit(1)
+
+    if filter_tag:
+        profiles = [
+            p for p in profiles
+            if filter_tag.lower() in [t.lower() for t in p.get("tags", [])]
+        ]
+        if not profiles:
+            console.print(f"[yellow]No profiles matched tag:[/] {filter_tag}")
+            sys.exit(0)
+
+    if quiet:
+        click.echo(json.dumps(profiles, indent=2))
+        return
+
+    _print_profiles_table(profiles, filter_tag)
+    console.print(
+        f"\n  [dim]{len(profiles)} profile(s) shown. "
+        f"Run [bold]envforge fix --profile <slug>[/] to generate a setup script.[/]"
+    )
+
+def _print_profiles_table(profiles: list, filter_tag: str | None) -> None:
+    table = Table(box=box.ROUNDED, show_header=True, padding=(0, 1), expand=False)
+    table.add_column("Slug", style="bold cyan", no_wrap=True)
+    table.add_column("Name", style="bold")
+    table.add_column("Tags", style="dim")
+    table.add_column("Description")
+
+    for profile in profiles:
+        if isinstance(profile, str):
+            table.add_row(profile, "—", "—", "—")
+        else:
+            slug = profile.get("slug") or profile.get("id") or "?"
+            name = profile.get("name", "—")
+            description = profile.get("description", "—")
+            tags = profile.get("tags") or []
+            tag_str = ", ".join(tags) if tags else "[dim]none[/]"
+            table.add_row(slug, name, tag_str, description)
+
+    header = "[bold]Available Profiles[/]"
+    if filter_tag:
+        header += f" [dim](filtered by tag: {filter_tag})[/]"
+
+    console.print(f"\n{header}")
+    console.print(table)
