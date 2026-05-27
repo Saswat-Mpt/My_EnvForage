@@ -12,12 +12,7 @@ OutputFormat = Literal[
     "setup.ps1",
     "requirements.txt",
     "Dockerfile",
-
-    "devcontainer.json",
-    "pyproject.toml",
     "Makefile",
-]
-
     "environment.yml",
     "docker-compose.yml",
     "devcontainer.json",
@@ -203,8 +198,6 @@ class GenerationResponse(BaseModel):
 
 class GenerationErrorResponse(BaseModel):
     """Response when compatibility resolution fails."""
-
-    error: dict[str, Any]  # Structured IncompatibilityError details
 
 
     error: dict[str, Any] = Field(
