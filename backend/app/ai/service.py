@@ -159,14 +159,21 @@ class AITroubleshootService:
         # ── Step 5: Persist to DB ─────────────────────────────────────────
         latency_ms = int((time.monotonic() - start_time) * 1000)
         token_usage = getattr(provider, "last_token_usage", None)
-        if callable(token_usage):
-            token_usage = token_usage()
-        elif not isinstance(token_usage, dict):
-            token_usage = getattr(provider, "_last_usage", None)
 
-        total_tokens = token_usage.get("total_tokens", 0) if token_usage else 0
-        prompt_tokens = token_usage.get("prompt_tokens", 0) if token_usage else 0
-        completion_tokens = token_usage.get("completion_tokens", 0) if token_usage else 0
+if callable(token_usage):
+    token_usage = token_usage()
+
+if not isinstance(token_usage, dict):
+    token_usage = {}
+
+try:
+    total_tokens = int(token_usage.get("total_tokens", 0))
+    prompt_tokens = int(token_usage.get("prompt_tokens", 0))
+    completion_tokens = int(token_usage.get("completion_tokens", 0))
+except (TypeError, ValueError):
+    total_tokens = 0
+    prompt_tokens = 0
+    completion_tokens = 0
 
         record_ai_token_usage(
             provider=provider_name,
